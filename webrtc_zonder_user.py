@@ -10,7 +10,7 @@ CLIENT_ID = os.getenv("GENESYS_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GENESYS_CLIENT_SECRET")
 
 # Template phone name contains (case-insensitive)
-TEMPLATE_PHONE_NAME_CONTAINS = os.getenv("TEMPLATE_PHONE_NAME_CONTAINS", "WebRTC - Genesys Test User 1")
+TEMPLATE_PHONE_NAME_CONTAINS = os.getenv("TEMPLATE_PHONE_NAME_CONTAINS", "WebRTC Lynn van Tiggelen")
 
 # Skill + language
 TARGET_SKILL_NAME = os.getenv("TARGET_SKILL_NAME", "_Voice")
@@ -47,9 +47,15 @@ def safe_get_json(resp: requests.Response) -> dict:
 
 def require_env():
     if not CLIENT_ID or not CLIENT_SECRET:
-        raise SystemExit(
-            "Missing env vars. Set GENESYS_CLIENT_ID and GENESYS_CLIENT_SECRET as GitHub Secrets."
-        )
+        raise SystemExit("Missing env vars. Set GENESYS_CLIENT_ID and GENESYS_CLIENT_SECRET.")
+
+def derive_first_name(full_name: str) -> str | None:
+    if not full_name:
+        return None
+    parts = full_name.strip().split()
+    if not parts:
+        return None
+    return parts[0]
 
 # ========= OAuth =========
 def get_access_token() -> str | None:
@@ -159,7 +165,7 @@ def set_default_station(token: str, user_id: str, station_id: str) -> bool:
         logging.warning("Default station PUT failed for %s: %s - %s", user_id, r.status_code, r.text)
         return False
 
-    for attempt in range(1, DEFAULT_STATION_VERIFY_RETRIES + 1):
+    for _ in range(DEFAULT_STATION_VERIFY_RETRIES):
         state = get_user_station_state(token, user_id)
         if is_default_station_set(state, station_id):
             return True
@@ -363,6 +369,66 @@ def ensure_user_skill_and_language(token: str, user: dict, skill_id: str, langua
     ok2 = ensure_user_language(token, user, language_id, TARGET_LANGUAGE_PROFICIENCY)
     return ok1 and ok2
 
+# ========= Preferred name (GET user + PATCH user) =========
+def get_user_details(token: str, user_id: str) -> dict | None:
+    headers = auth_headers(token)
+    url = f"https://api.{ENVIRONMENT}/api/v2/users/{user_id}"
+    r = requests.get(url, headers=headers, timeout=HTTP_TIMEOUT)
+    if r.status_code != 200:
+        logging.warning("User details fetch failed for %s: %s - %s", user_id, r.status_code, r.text)
+        return None
+    return safe_get_json(r)
+
+def patch_user_preferred_name(token: str, user_id: str, version: int, preferred_name: str) -> requests.Response:
+    headers = {**auth_headers(token), "Content-Type": "application/json"}
+    url = f"https://api.{ENVIRONMENT}/api/v2/users/{user_id}"
+    body = {"version": version, "preferredName": preferred_name}
+    return requests.patch(url, headers=headers, json=body, timeout=HTTP_TIMEOUT)
+
+def ensure_preferred_name_firstname(token: str, user: dict) -> bool:
+    user_id = user["ID"]
+    details = get_user_details(token, user_id)
+    if not details:
+        return False
+
+    full_name = details.get("name") or user.get("Naam") or ""
+    preferred_existing = (details.get("preferredName") or "").strip()
+    version = details.get("version")
+
+    first_name = derive_first_name(full_name)
+    if not first_name:
+        logging.warning("PreferredName skip (no first name parsed): %s (%s) name='%s'", user.get("Naam"), user_id, full_name)
+        return False
+
+    if preferred_existing.lower() == first_name.lower():
+        logging.info("PreferredName ok: %s (%s) -> '%s'", full_name, user_id, first_name)
+        return True
+
+    if not isinstance(version, int):
+        logging.warning("PreferredName skip (missing version): %s (%s)", full_name, user_id)
+        return False
+
+    r = patch_user_preferred_name(token, user_id, version, first_name)
+    if r.status_code in (200, 204):
+        logging.info("PreferredName set: %s (%s) -> '%s'", full_name, user_id, first_name)
+        return True
+
+    # Version mismatch: refetch once and retry
+    if r.status_code == 409:
+        details2 = get_user_details(token, user_id)
+        if not details2 or not isinstance(details2.get("version"), int):
+            logging.error("PreferredName retry failed (refetch/version): %s (%s)", full_name, user_id)
+            return False
+        r2 = patch_user_preferred_name(token, user_id, int(details2["version"]), first_name)
+        if r2.status_code in (200, 204):
+            logging.info("PreferredName set (retry): %s (%s) -> '%s'", full_name, user_id, first_name)
+            return True
+        logging.error("PreferredName PATCH failed (retry) for %s (%s): %s - %s", full_name, user_id, r2.status_code, r2.text)
+        return False
+
+    logging.error("PreferredName PATCH failed for %s (%s): %s - %s", full_name, user_id, r.status_code, r.text)
+    return False
+
 # ========= Create WebRTC phone =========
 def create_webrtc_phone_for_user(token: str, user: dict, template_phone_details: dict, skill_id: str, language_id: str) -> bool:
     payload = build_payload_from_template(template_phone_details, user)
@@ -438,11 +504,17 @@ def run():
 
     for idx, u in enumerate(users, start=1):
         try:
+            # 1) preferredName zetten op voornaam (best-effort)
+            ensure_preferred_name_firstname(token, u)
+            time.sleep(REQUEST_DELAY)
+
+            # 2) WebRTC + station + skill + language
             success = create_webrtc_phone_for_user(token, u, template_phone_details, skill_id, language_id)
             if success:
                 ok += 1
             else:
                 fail += 1
+
         except Exception as e:
             fail += 1
             logging.exception("Unhandled error for user %s (%s): %s", u.get("Naam"), u.get("ID"), e)
@@ -457,4 +529,3 @@ def run():
 if __name__ == "__main__":
     logging.info("Genesys job started (%s)", datetime.now().isoformat())
     run()
-
