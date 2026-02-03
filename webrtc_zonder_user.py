@@ -10,7 +10,7 @@ CLIENT_ID = os.getenv("GENESYS_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GENESYS_CLIENT_SECRET")
 
 # Template phone name contains (case-insensitive)
-TEMPLATE_PHONE_NAME_CONTAINS = os.getenv("TEMPLATE_PHONE_NAME_CONTAINS", "WebRTC Lynn van Tiggelen")
+TEMPLATE_PHONE_NAME_CONTAINS = os.getenv("TEMPLATE_PHONE_NAME_CONTAINS", "WebRTC - Genesys Test User 1")
 
 # Skill + language
 TARGET_SKILL_NAME = os.getenv("TARGET_SKILL_NAME", "_Voice")
@@ -457,3 +457,4 @@ def run():
 if __name__ == "__main__":
     logging.info("Genesys job started (%s)", datetime.now().isoformat())
     run()
+
