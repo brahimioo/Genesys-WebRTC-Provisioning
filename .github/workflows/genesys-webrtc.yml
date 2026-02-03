@@ -33,4 +33,4 @@ jobs:
           GENESYS_CLIENT_SECRET: ${{ secrets.GENESYS_CLIENT_SECRET }}
           GENESYS_ENVIRONMENT: mypurecloud.de
         run: |
-          python genesys_job.py
+          python webrtc_zonder_user.py
