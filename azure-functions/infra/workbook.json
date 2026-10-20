@@ -1,0 +1,73 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## Genesys WebRTC Provisioning\nOperationele gebeurtenissen uit de Function App. De actuele gebruikersstatus staat in WebRtcState en de beveiligde status-API."
+      },
+      "name": "intro"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppTraces\n| where Message startswith \"webrtc_event \"\n| extend e=parse_json(substring(Message,13))\n| summarize Aantal=count() by Event=tostring(e.event)\n| order by Aantal desc",
+        "size": 0,
+        "title": "Gebeurtenissen",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "WORKSPACE_RESOURCE_ID"
+        ],
+        "visualization": "table"
+      },
+      "name": "events"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppTraces\n| where Message startswith \"webrtc_event \"\n| extend e=parse_json(substring(Message,13))\n| where tostring(e.event) in (\"user_failed\",\"scan_failed\",\"poison_message\")\n| project TimeGenerated,Event=tostring(e.event),UserId=tostring(e.user_id),Code=tostring(e.code)\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "Fouten",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "WORKSPACE_RESOURCE_ID"
+        ],
+        "visualization": "table"
+      },
+      "name": "errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppTraces\n| where Message startswith \"webrtc_event \"\n| extend e=parse_json(substring(Message,13))\n| where tostring(e.event) == \"scan_completed\"\n| project TimeGenerated,Eligible=toint(e.eligible),Scheduled=toint(e.scheduled),DryRun=tobool(e.dry_run)\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "Laatste scans",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "WORKSPACE_RESOURCE_ID"
+        ],
+        "visualization": "table"
+      },
+      "name": "scans"
+    }
+  ],
+  "isLocked": false,
+  "fallbackResourceIds": [
+    "WORKSPACE_RESOURCE_ID"
+  ]
+}

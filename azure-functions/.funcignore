@@ -1,0 +1,15 @@
+.git*
+.github/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+tests/
+scripts/
+infra/
+docs/
+local.settings.json
+*.local.json
+*.zip
+README.md
+VALIDATION.md
