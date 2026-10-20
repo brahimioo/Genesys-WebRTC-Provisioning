@@ -1,0 +1,56 @@
+name: Validate and export Azure WebRTC
+on:
+  push:
+    paths:
+      - 'azure-functions/**'
+      - '.github/workflows/azure-webrtc-*.yml'
+  pull_request:
+    paths:
+      - 'azure-functions/**'
+      - '.github/workflows/azure-webrtc-*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: azure-functions/requirements*.txt
+      - name: Install pinned dependencies
+        run: python -m pip install -r azure-functions/requirements-dev.txt
+      - name: Lint
+        run: python -m ruff check azure-functions
+      - name: Test recovery and security behavior
+        working-directory: azure-functions
+        run: python -m pytest -q --junitxml=dist/test-results.xml
+      - name: Check package and Function indexing
+        working-directory: azure-functions
+        run: python scripts/validate_package.py
+      - name: Compile Azure infrastructure
+        run: |
+          mkdir -p azure-functions/dist
+          az bicep install
+          az bicep build --file azure-functions/infra/main.bicep --outfile azure-functions/dist/azuredeploy.json
+      - name: Build exports
+        working-directory: azure-functions
+        run: |
+          python scripts/build_export.py
+          python -m pip freeze > dist/validated-dependencies.txt
+          python scripts/write_validation.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: genesys-webrtc-azure-export
+          path: azure-functions/dist/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: azure-webrtc-test-results
+          path: azure-functions/dist/test-results.xml

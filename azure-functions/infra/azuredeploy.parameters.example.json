@@ -1,0 +1,93 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "westeurope"
+    },
+    "projectName": {
+      "value": "genesys-webrtc"
+    },
+    "stage": {
+      "value": "test"
+    },
+    "entraApiClientId": {
+      "value": ""
+    },
+    "adminObjectIds": {
+      "value": []
+    },
+    "genesysEnvironment": {
+      "value": "mypurecloud.de"
+    },
+    "genesysClientId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "sourceGroupId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "siteId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "phoneBaseSettingsId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "lineBaseSettingsId": {
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    "routingSkillId": {
+      "value": ""
+    },
+    "routingLanguageId": {
+      "value": ""
+    },
+    "skillProficiency": {
+      "value": 0
+    },
+    "languageProficiency": {
+      "value": 0
+    },
+    "pilotUserIds": {
+      "value": []
+    },
+    "dryRun": {
+      "value": true
+    },
+    "provisioningPaused": {
+      "value": false
+    },
+    "defaultStationPolicy": {
+      "value": "if_missing"
+    },
+    "preferredNamePolicy": {
+      "value": "disabled"
+    },
+    "givenNames": {
+      "value": {}
+    },
+    "maxJobsPerScan": {
+      "value": 50
+    },
+    "maxAttempts": {
+      "value": 8
+    },
+    "reconcileHours": {
+      "value": 24
+    },
+    "scanSchedule": {
+      "value": "0 */15 * * * *"
+    },
+    "recoverySchedule": {
+      "value": "0 */5 * * * *"
+    },
+    "reconcileSchedule": {
+      "value": "0 0 1 * * *"
+    },
+    "enableAlerts": {
+      "value": false
+    },
+    "alertEmail": {
+      "value": ""
+    }
+  }
+}
