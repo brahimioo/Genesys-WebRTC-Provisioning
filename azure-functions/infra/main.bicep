@@ -224,7 +224,7 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'GENESYS_CLIENT_ID'
  value: genesysClientId }
         { name: 'GENESYS_CLIENT_SECRET'
- value: '@Microsoft.KeyVault(SecretUri=${vault.properties.vaultUri}secrets/${secret.name})' }
+ value: '@Microsoft.KeyVault(SecretUri=${vault.properties.vaultUri}secrets/genesys-client-secret)' }
         { name: 'ENTRA_TENANT_ID'
  value: tenant().tenantId }
         { name: 'ADMIN_OBJECT_IDS'

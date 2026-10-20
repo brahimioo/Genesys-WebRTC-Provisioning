@@ -13,7 +13,7 @@ def require_admin(headers, settings):
     encoded = headers.get("x-ms-client-principal", "")
     try:
         principal = json.loads(base64.b64decode(encoded, validate=True))
-        if principal.get("auth_typ") != "aad":
+        if not isinstance(principal, dict) or principal.get("auth_typ") != "aad":
             raise ValueError()
         claims = {}
         for item in principal.get("claims", []):

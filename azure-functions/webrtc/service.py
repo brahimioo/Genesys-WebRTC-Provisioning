@@ -53,6 +53,12 @@ class Service:
         recovered = self.store.recover()
         removed = self.store.cleanup()
         emit("maintenance_completed", recovered=recovered, expired_records_removed=removed)
+        users = list(self.store.users())
+        pending = [x for x in users if x["status"] in {"pending", "retry", "running"}]
+        oldest = max((time.time() - x.get("first_queued_at", time.time()) for x in pending), default=0)
+        emit("backlog_snapshot", pending=len(pending),
+             blocked=sum(x["status"] == "blocked" for x in users),
+             oldest_pending_age_seconds=int(max(0, oldest)))
 
     def request_user(self, user_id, reset_create_intent=False):
         user_id = str(UUID(user_id))

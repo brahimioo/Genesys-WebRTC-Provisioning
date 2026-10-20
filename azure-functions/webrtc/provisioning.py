@@ -27,16 +27,19 @@ class Context:
     def change(self, step, before, after, action):
         if self.store.paused():
             raise ProvisioningError("provisioning_paused", True, 300)
-        self.store.audit(self.doc["user_id"], step, before, after, "intent")
+        self.store.audit(self.doc["user_id"], step, before, after, "intent",
+                             generation=self.doc["generation"])
         self.doc.setdefault("steps", {})[step] = "intent"
         self.checkpoint()
         try:
             result = action()
         except ProvisioningError as error:
             outcome = "unknown" if error.code == "api_network_outcome_unknown" else "rejected_or_failed"
-            self.store.audit(self.doc["user_id"], step, before, after, outcome)
+            self.store.audit(self.doc["user_id"], step, before, after, outcome,
+                             generation=self.doc["generation"])
             raise
-        self.store.audit(self.doc["user_id"], step, before, after, "accepted")
+        self.store.audit(self.doc["user_id"], step, before, after, "accepted",
+                             generation=self.doc["generation"])
         return result
 
 
@@ -119,7 +122,7 @@ class Provisioner:
                         "phoneBaseSettingsId": self.settings.phone_base_id,
                     }, lambda: self.api.create_phone(user))
                 except ProvisioningError as error:
-                    if error.status in {400, 401, 403, 404, 422, 429}:
+                    if not error.uncertain:
                         # A definite rejection did not create a phone.
                         ctx.doc["create_in_flight"] = False
                         ctx.checkpoint()

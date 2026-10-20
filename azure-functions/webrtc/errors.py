@@ -7,3 +7,6 @@ class ProvisioningError(Exception):
         self.retryable = retryable
         self.retry_after = max(1, min(int(retry_after), 86400))
         self.status = status
+        self.uncertain = code in {"api_network_outcome_unknown", "api_invalid_json"} or (
+            code.startswith("api_") and status is not None and (status in {408, 409} or status >= 500)
+        )

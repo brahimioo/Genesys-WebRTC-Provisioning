@@ -101,7 +101,7 @@ class Store:
             if doc.get("lease_until", 0) > now:
                 return False
             if not force and not changed_policy:
-                if doc["status"] in {"blocked", "failed", "excluded", "cancelled"}:
+                if doc["status"] in {"blocked", "failed"}:
                     return False
                 if doc["status"] in {"pending", "retry", "running"}:
                     # Recovery is responsible for these jobs; preserve attempt counters.
@@ -111,13 +111,13 @@ class Store:
         if not doc:
             doc = {"user_id": user_id, "attempts": 0, "steps": {}, "created_at": stamp()}
         if changed_policy or force or doc.get("status") in {
-            "succeeded", "succeeded_with_warnings", "dry_run",
+            "succeeded", "succeeded_with_warnings", "dry_run", "excluded", "cancelled",
         }:
             doc["attempts"] = 0
         doc.update(
             status="pending", generation=str(uuid.uuid4()),
             fingerprint=self.settings.fingerprint, due_at=now, lease_until=0,
-            last_error="", enqueued_at=0,
+            last_error="", enqueued_at=0, first_queued_at=now,
         )
         etag = self.save_user(doc, etag)
         self.enqueue(doc)
@@ -160,7 +160,7 @@ class Store:
             if snapshot.get("enqueued_at", 0) > now - 240:
                 continue
             doc, etag = self.get_user(snapshot["user_id"])
-            if doc.get("generation") != snapshot.get("generation"):
+            if not doc or doc.get("generation") != snapshot.get("generation"):
                 continue
             # Keep the durable outbox entry recoverable if sending fails.
             self.enqueue(doc)
@@ -223,10 +223,11 @@ class Store:
         row.update(paused=paused, updated_at=stamp())
         self.write(self.control, row, etag)
 
-    def audit(self, user_id, operation, before, after, outcome):
+    def audit(self, user_id, operation, before, after, outcome, generation=""):
         self.audit_table.create_entity({
             "PartitionKey": self.partition, "RowKey": str(uuid.uuid4()),
             "user_id": user_id, "operation": operation, "outcome": outcome,
+            "generation": generation,
             "created_at": stamp(), "expires_at": time.time() + 90 * 86400,
             "before": json.dumps(before, ensure_ascii=False),
             "after": json.dumps(after, ensure_ascii=False),

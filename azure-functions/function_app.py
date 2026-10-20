@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from functools import lru_cache
 from uuid import UUID
 
@@ -82,7 +83,9 @@ def poison_user(message: func.QueueMessage):
         user_id = str(UUID(job["userId"]))
         service = runtime()
         doc, etag = service.store.get_user(user_id)
-        if doc and doc.get("generation") == job.get("generation"):
+        if (doc and doc.get("generation") == job.get("generation")
+                and doc["status"] in {"pending", "retry", "running"}
+                and doc.get("lease_until", 0) <= time.time()):
             doc.update(status="blocked", last_error="queue_poison", lease_until=0)
             service.store.save_user(doc, etag)
         emit("poison_message", user_id=user_id)

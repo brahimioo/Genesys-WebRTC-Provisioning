@@ -64,6 +64,25 @@
         "visualization": "table"
       },
       "name": "scans"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "AppTraces\n| where Message startswith \"webrtc_event \"\n| extend e=parse_json(substring(Message,13))\n| where tostring(e.event) == \"backlog_snapshot\"\n| project TimeGenerated,Pending=toint(e.pending),Blocked=toint(e.blocked),OldestSeconds=toint(e.oldest_pending_age_seconds)\n| order by TimeGenerated desc",
+        "size": 0,
+        "title": "Achterstand",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "WORKSPACE_RESOURCE_ID"
+        ],
+        "visualization": "table"
+      },
+      "name": "backlog"
     }
   ],
   "isLocked": false,
